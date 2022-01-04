@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_chat_demo/constants/app_constants.dart';
 import 'package:flutter_chat_demo/constants/color_constants.dart';
@@ -11,7 +10,6 @@ import 'package:flutter_chat_demo/providers/providers.dart';
 import 'package:flutter_chat_demo/utils/utils.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 
 import '../models/models.dart';
@@ -28,9 +26,6 @@ class HomePage extends StatefulWidget {
 class HomePageState extends State<HomePage> {
   HomePageState({Key? key});
 
-  final FirebaseMessaging firebaseMessaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-  final GoogleSignIn googleSignIn = GoogleSignIn();
   final ScrollController listScrollController = ScrollController();
 
   int _limit = 20;
@@ -39,14 +34,13 @@ class HomePageState extends State<HomePage> {
   bool isLoading = false;
 
   late AuthProvider authProvider;
-  late String currentUserId;
+  late String currentUserId = "";
   late HomeProvider homeProvider;
   Debouncer searchDebouncer = Debouncer(milliseconds: 300);
   StreamController<bool> btnClearController = StreamController<bool>();
   TextEditingController searchBarTec = TextEditingController();
 
   List<PopupChoices> choices = <PopupChoices>[
-    PopupChoices(title: 'Settings', icon: Icons.settings),
     PopupChoices(title: 'Log out', icon: Icons.exit_to_app),
   ];
 
@@ -55,17 +49,9 @@ class HomePageState extends State<HomePage> {
     super.initState();
     authProvider = context.read<AuthProvider>();
     homeProvider = context.read<HomeProvider>();
-
-    if (authProvider.getUserFirebaseId()?.isNotEmpty == true) {
-      currentUserId = authProvider.getUserFirebaseId()!;
-    } else {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => LoginPage()),
-        (Route<dynamic> route) => false,
-      );
-    }
-    registerNotification();
-    configLocalNotification();
+    String? token = authProvider.getUserToken();
+   
+    
     listScrollController.addListener(scrollListener);
   }
 
@@ -75,34 +61,7 @@ class HomePageState extends State<HomePage> {
     btnClearController.close();
   }
 
-  void registerNotification() {
-    firebaseMessaging.requestPermission();
 
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('onMessage: $message');
-      if (message.notification != null) {
-        showNotification(message.notification!);
-      }
-      return;
-    });
-
-    firebaseMessaging.getToken().then((token) {
-      print('push token: $token');
-      if (token != null) {
-        homeProvider.updateDataFirestore(FirestoreConstants.pathUserCollection, currentUserId, {'pushToken': token});
-      }
-    }).catchError((err) {
-      Fluttertoast.showToast(msg: err.message.toString());
-    });
-  }
-
-  void configLocalNotification() {
-    AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('app_icon');
-    IOSInitializationSettings initializationSettingsIOS = IOSInitializationSettings();
-    InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid, iOS: initializationSettingsIOS);
-    flutterLocalNotificationsPlugin.initialize(initializationSettings);
-  }
 
   void scrollListener() {
     if (listScrollController.offset >= listScrollController.position.maxScrollExtent &&
@@ -116,124 +75,17 @@ class HomePageState extends State<HomePage> {
   void onItemMenuPress(PopupChoices choice) {
     if (choice.title == 'Log out') {
       handleSignOut();
-    } else {
-      Navigator.push(context, MaterialPageRoute(builder: (context) => SettingsPage()));
-    }
+    } 
   }
 
-  void showNotification(RemoteNotification remoteNotification) async {
-    AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      Platform.isAndroid ? 'com.dfa.flutterchatdemo' : 'com.duytq.flutterchatdemo',
-      'Flutter chat demo',
-      'your channel description',
-      playSound: true,
-      enableVibration: true,
-      importance: Importance.max,
-      priority: Priority.high,
-    );
-    IOSNotificationDetails iOSPlatformChannelSpecifics = IOSNotificationDetails();
-    NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics, iOS: iOSPlatformChannelSpecifics);
 
-    print(remoteNotification);
-
-    await flutterLocalNotificationsPlugin.show(
-      0,
-      remoteNotification.title,
-      remoteNotification.body,
-      platformChannelSpecifics,
-      payload: null,
-    );
-  }
 
   Future<bool> onBackPress() {
-    openDialog();
+   Navigator.pop(context, 1);
     return Future.value(false);
   }
 
-  Future<void> openDialog() async {
-    switch (await showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return SimpleDialog(
-            clipBehavior: Clip.hardEdge,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            contentPadding: EdgeInsets.zero,
-            children: <Widget>[
-              Container(
-                color: ColorConstants.themeColor,
-                padding: EdgeInsets.only(bottom: 10, top: 10),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Container(
-                      child: Icon(
-                        Icons.exit_to_app,
-                        size: 30,
-                        color: Colors.white,
-                      ),
-                      margin: EdgeInsets.only(bottom: 10),
-                    ),
-                    Text(
-                      'Exit app',
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'Are you sure to exit app?',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-              SimpleDialogOption(
-                onPressed: () {
-                  Navigator.pop(context, 0);
-                },
-                child: Row(
-                  children: <Widget>[
-                    Container(
-                      child: Icon(
-                        Icons.cancel,
-                        color: ColorConstants.primaryColor,
-                      ),
-                      margin: EdgeInsets.only(right: 10),
-                    ),
-                    Text(
-                      'Cancel',
-                      style: TextStyle(color: ColorConstants.primaryColor, fontWeight: FontWeight.bold),
-                    )
-                  ],
-                ),
-              ),
-              SimpleDialogOption(
-                onPressed: () {
-                  Navigator.pop(context, 1);
-                },
-                child: Row(
-                  children: <Widget>[
-                    Container(
-                      child: Icon(
-                        Icons.check_circle,
-                        color: ColorConstants.primaryColor,
-                      ),
-                      margin: EdgeInsets.only(right: 10),
-                    ),
-                    Text(
-                      'Yes',
-                      style: TextStyle(color: ColorConstants.primaryColor, fontWeight: FontWeight.bold),
-                    )
-                  ],
-                ),
-              ),
-            ],
-          );
-        })) {
-      case 0:
-        break;
-      case 1:
-        exit(0);
-    }
-  }
+  
 
   Future<void> handleSignOut() async {
     authProvider.handleSignOut();
@@ -262,17 +114,20 @@ class HomePageState extends State<HomePage> {
               children: [
                 buildSearchBar(),
                 Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: homeProvider.getStreamFireStore(FirestoreConstants.pathUserCollection, _limit, _textSearch),
-                    builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                  child: FutureBuilder<List<UserChat>>(
+                    future: homeProvider.getUsers(),
+                    builder: (BuildContext context, AsyncSnapshot<List<UserChat>> snapshot) {
+                      print(snapshot.hasData);
                       if (snapshot.hasData) {
-                        if ((snapshot.data?.docs.length ?? 0) > 0) {
+                        
+                        if ((snapshot.data?.length ?? 0) > 0) {
                           return ListView.builder(
                             padding: EdgeInsets.all(10),
-                            itemBuilder: (context, index) => buildItem(context, snapshot.data?.docs[index]),
-                            itemCount: snapshot.data?.docs.length,
+                            itemBuilder: (context, index) => buildItem(context, snapshot.data?[index]),
+                            itemCount: snapshot.data?.length,
                             controller: listScrollController,
                           );
+                          
                         } else {
                           return Center(
                             child: Text("No users"),
@@ -308,7 +163,7 @@ class HomePageState extends State<HomePage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(Icons.search, color: ColorConstants.greyColor, size: 20),
+          Icon(Icons.group_add, color: ColorConstants.greyColor, size: 20),
           SizedBox(width: 5),
           Expanded(
             child: TextFormField(
@@ -330,7 +185,7 @@ class HomePageState extends State<HomePage> {
                 });
               },
               decoration: InputDecoration.collapsed(
-                hintText: 'Search nickname (you have to type exactly string)',
+                hintText: 'Enter User ID',
                 hintStyle: TextStyle(fontSize: 13, color: ColorConstants.greyColor),
               ),
               style: TextStyle(fontSize: 13),
@@ -347,8 +202,18 @@ class HomePageState extends State<HomePage> {
                           setState(() {
                             _textSearch = "";
                           });
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ChatPage(
+                                peerId: _textSearch,
+                                peerAvatar: "",
+                                peerNickname: "New User",
+                              ),
+                            ),
+                          );
                         },
-                        child: Icon(Icons.clear_rounded, color: ColorConstants.greyColor, size: 20))
+                        child: Icon(Icons.add, color: ColorConstants.greyColor, size: 20))
                     : SizedBox.shrink();
               }),
         ],
@@ -389,9 +254,8 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  Widget buildItem(BuildContext context, DocumentSnapshot? document) {
-    if (document != null) {
-      UserChat userChat = UserChat.fromDocument(document);
+  Widget buildItem(BuildContext context, UserChat? userChat) {
+    if (userChat != null) {
       if (userChat.id == currentUserId) {
         return SizedBox.shrink();
       } else {
@@ -453,7 +317,7 @@ class HomePageState extends State<HomePage> {
                         ),
                         Container(
                           child: Text(
-                            'About me: ${userChat.aboutMe}',
+                            '${userChat.lastMessage}',
                             maxLines: 1,
                             style: TextStyle(color: ColorConstants.primaryColor),
                           ),
