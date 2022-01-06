@@ -5,7 +5,8 @@ class UserChat {
   String photoUrl;
   String nickname;
   String lastMessage;
+  int unread;
 
-  UserChat({required this.id, required this.photoUrl, required this.nickname, required this.lastMessage});
+  UserChat({required this.id, required this.photoUrl, required this.nickname, required this.lastMessage, required this.unread});
   
 }

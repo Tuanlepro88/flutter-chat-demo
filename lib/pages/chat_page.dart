@@ -61,6 +61,7 @@ class ChatPageState extends State<ChatPage> {
     WidgetsBinding.instance?.addPostFrameCallback((timeStamp) {
       chatProvider = context.read<ChatProvider>();
       authProvider = context.read<AuthProvider>();
+      chatProvider.getMessages(peerId, 100);
     });
 
     focusNode.addListener(onFocusChange);
@@ -69,7 +70,7 @@ class ChatPageState extends State<ChatPage> {
   }
 
   _scrollListener() {
-    if (listScrollController.offset >= listScrollController.position.maxScrollExtent &&
+    if (listScrollController.hasClients && listScrollController.offset >= listScrollController.position.maxScrollExtent &&
         !listScrollController.position.outOfRange &&
         _limit <= listMessage.length) {
       setState(() {
@@ -96,9 +97,9 @@ class ChatPageState extends State<ChatPage> {
   void onSendMessage(String content, int type) {
     if (content.trim().isNotEmpty) {
       textEditingController.clear();
-      chatProvider.sendMessage(content, type, groupChatId, currentUserId, peerId);
-      if (listMessage.length > 0) {
-      listScrollController.animateTo(0, duration: Duration(milliseconds: 300), curve: Curves.easeOut);
+      chatProvider.sendMessage(content, type, groupChatId, peerNickname, peerId);
+      if (listScrollController.hasClients) {
+        listScrollController.animateTo(0, duration: Duration(milliseconds: 300), curve: Curves.easeOut);
       }
     } else {
       Fluttertoast.showToast(msg: 'Nothing to send', backgroundColor: ColorConstants.greyColor);
@@ -202,6 +203,7 @@ class ChatPageState extends State<ChatPage> {
   }
 
   bool isLastMessageLeft(int index) {
+    
     if ((index > 0 && listMessage[index - 1].sender != peerId) || index == 0) {
       return true;
     } else {
@@ -321,33 +323,20 @@ class ChatPageState extends State<ChatPage> {
 
   Widget buildListMessage(BuildContext context) {
     ChatProvider provider = Provider.of<ChatProvider>(context);
+    listMessage = provider.chatMessages[groupChatId] ?? [];
     return Flexible(
-      child: groupChatId.isNotEmpty
-          ? FutureBuilder<List<MessageChat>>(
-              future: provider.getMessages(groupChatId, _limit),
-              builder: (BuildContext context, AsyncSnapshot<List<MessageChat>> snapshot) {
-                if (snapshot.hasData) {
-                  listMessage = snapshot.data!;
-                  if (listMessage.length > 0) {
-                    return ListView.builder(
+      child: groupChatId.isNotEmpty && !provider.isLoading && listMessage != null
+          ? 
+            Container(
+              child: listMessage.length > 0 ? ListView.builder(
                       padding: EdgeInsets.all(10),
                       itemBuilder: (context, index) => buildItem(index, listMessage[index]),
                       itemCount: listMessage.length,
                       reverse: true,
                       controller: listScrollController,
-                    );
-                  } else {
-                    return Center(child: Text("No message here yet..."));
-                  }
-                } else {
-                  return Center(
-                    child: CircularProgressIndicator(
-                      color: ColorConstants.themeColor,
-                    ),
-                  );
-                }
-              },
+                    ) : Center(child: Text("No message here yet..."))
             )
+          
           : Center(
               child: CircularProgressIndicator(
                 color: ColorConstants.themeColor,

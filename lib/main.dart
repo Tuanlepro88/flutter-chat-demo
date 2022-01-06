@@ -36,7 +36,7 @@ class MyApp extends StatelessWidget {
             prefs: this.prefs,
           ),
         ),
-        Provider<ChatProvider>(
+        ChangeNotifierProvider<ChatProvider>(
           create: (_) => ChatProvider(
             prefs: this.prefs,
           ),

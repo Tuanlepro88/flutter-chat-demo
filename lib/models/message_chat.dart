@@ -23,14 +23,13 @@ class MessageChat {
 
 
   factory MessageChat.fromJson(json) {
-    
     return MessageChat(
       pk: json["pk"], 
       text: json["text"], 
       created: json["created"], 
       modified: json["modified"], 
-      sender: json["sender"]["first_name"], 
-      recipient: json["recipient"]["first_name"], 
+      sender: "${json["sender"]["pk"] ?? ""}", 
+      recipient: "${json["recipient"]["pk"] ?? ""}", 
       out: json["out"], 
       read: json["read"], 
     );

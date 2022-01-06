@@ -60,7 +60,7 @@ class LoginPageState extends State<LoginPage> {
                       decoration: const InputDecoration(
                         hintText: 'Enter your email',
                       ),
-                      initialValue: "ha@loka.com",
+                      initialValue: "",
                       onSaved: (String? value) {
                         email = value;
                       },
@@ -78,7 +78,7 @@ class LoginPageState extends State<LoginPage> {
                       obscureText: true,
                       enableSuggestions: false,
                       autocorrect: false,
-                      initialValue: "000000",
+                      initialValue: "",
                       onSaved: (String? value) {
                         password = value;
                       },
@@ -101,7 +101,7 @@ class LoginPageState extends State<LoginPage> {
                             _formKey.currentState!.save();
                             bool isSuccess = await authProvider.handleSignIn(email!, password!);
                             if (isSuccess) {
-                              chatProvider.connect();
+                              
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(

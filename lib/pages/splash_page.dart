@@ -23,15 +23,7 @@ class SplashPageState extends State<SplashPage> {
   }
 
   void checkSignedIn() async {
-    AuthProvider authProvider = context.read<AuthProvider>();
-    bool isLoggedIn = await authProvider.isLoggedIn();
-    if (isLoggedIn) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
-      );
-      return;
-    }
+  
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => LoginPage()),

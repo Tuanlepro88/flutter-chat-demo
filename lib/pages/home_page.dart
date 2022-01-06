@@ -34,6 +34,7 @@ class HomePageState extends State<HomePage> {
   bool isLoading = false;
 
   late AuthProvider authProvider;
+  late ChatProvider chatProvider;
   late String currentUserId = "";
   late HomeProvider homeProvider;
   Debouncer searchDebouncer = Debouncer(milliseconds: 300);
@@ -51,7 +52,11 @@ class HomePageState extends State<HomePage> {
     homeProvider = context.read<HomeProvider>();
     String? token = authProvider.getUserToken();
    
-    
+    Future.delayed(Duration(seconds: 1), () {
+      // just delay for showing this slash page clearer because it too fast
+      chatProvider = context.read<ChatProvider>();
+      chatProvider.connect();
+    });
     listScrollController.addListener(scrollListener);
   }
 
@@ -89,6 +94,7 @@ class HomePageState extends State<HomePage> {
 
   Future<void> handleSignOut() async {
     authProvider.handleSignOut();
+    chatProvider.close();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => LoginPage()),
       (Route<dynamic> route) => false,
@@ -115,7 +121,7 @@ class HomePageState extends State<HomePage> {
                 buildSearchBar(),
                 Expanded(
                   child: FutureBuilder<List<UserChat>>(
-                    future: homeProvider.getUsers(),
+                    future: homeProvider.getUsers(_textSearch),
                     builder: (BuildContext context, AsyncSnapshot<List<UserChat>> snapshot) {
                       print(snapshot.hasData);
                       if (snapshot.hasData) {
@@ -185,7 +191,7 @@ class HomePageState extends State<HomePage> {
                 });
               },
               decoration: InputDecoration.collapsed(
-                hintText: 'Enter User ID',
+                hintText: 'Search users',
                 hintStyle: TextStyle(fontSize: 13, color: ColorConstants.greyColor),
               ),
               style: TextStyle(fontSize: 13),
@@ -202,18 +208,18 @@ class HomePageState extends State<HomePage> {
                           setState(() {
                             _textSearch = "";
                           });
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ChatPage(
-                                peerId: _textSearch,
-                                peerAvatar: "",
-                                peerNickname: "New User",
-                              ),
-                            ),
-                          );
+                          // Navigator.push(
+                          //   context,
+                          //   MaterialPageRoute(
+                          //     builder: (context) => ChatPage(
+                          //       peerId: _textSearch,
+                          //       peerAvatar: "",
+                          //       peerNickname: "New User",
+                          //     ),
+                          //   ),
+                          // );
                         },
-                        child: Icon(Icons.add, color: ColorConstants.greyColor, size: 20))
+                        child: Icon(Icons.clear, color: ColorConstants.greyColor, size: 20))
                     : SizedBox.shrink();
               }),
         ],
@@ -318,6 +324,15 @@ class HomePageState extends State<HomePage> {
                         Container(
                           child: Text(
                             '${userChat.lastMessage}',
+                            maxLines: 1,
+                            style: TextStyle(color: ColorConstants.primaryColor),
+                          ),
+                          alignment: Alignment.centerLeft,
+                          margin: EdgeInsets.fromLTRB(10, 0, 0, 0),
+                        ),
+                        Container(
+                          child: Text(
+                            'Unread: ${userChat.unread}',
                             maxLines: 1,
                             style: TextStyle(color: ColorConstants.primaryColor),
                           ),
