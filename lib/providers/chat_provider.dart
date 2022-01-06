@@ -27,12 +27,17 @@ class ChatProvider extends ChangeNotifier{
   // TODO: 3. handle messages
   void onMessage(message) {
     var body = jsonDecode(message);
+    var messageType = body["msg_type"];
+     
+     // TODO: 5. Handle Login
     if (body["msg_type"] == TypeMessage.requestLogin) {
       login();
     } else if (body["msg_type"] == TypeMessage.loginSuccess){
+       // TODO: 6. Handle Login Success
       userId = body["pk"];
       userName = body["name"];
     } else if (body["msg_type"] == TypeMessage.text){
+      // TODO: 6. Handle Text Message - (before save)
       String userPk = userId == body["sender"] ? body["receiver"] : body["sender"];
       MessageChat msg = MessageChat.fromJson({
         "pk": body["random_id"],
@@ -55,6 +60,7 @@ class ChatProvider extends ChangeNotifier{
         notifyListeners();
       }
     } else if (body["msg_type"] == TypeMessage.created){
+      // TODO: 7. Handle Text Message - (after save)
       String userPk = userId == body["sender"] ? body["receiver"] : body["sender"];
       int? index = chatMessages[userPk]?.indexWhere((m) => m.pk == body["random_id"]);
       if (index !=null && index > -1) {
@@ -85,6 +91,7 @@ class ChatProvider extends ChangeNotifier{
     }
   }
 
+ 
   void login() {
     String? token = getPref("token");
     if  (token != null && _channel != null) {
@@ -178,6 +185,8 @@ class ChatProvider extends ChangeNotifier{
   }
 }
 
+
+// TODO: 4. Message types
 class TypeMessage {
   static const online = 1;
   static const offline = 2;
